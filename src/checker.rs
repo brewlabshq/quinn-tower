@@ -47,7 +47,7 @@ pub async fn check_rpc() -> Result<(), anyhow::Error> {
                     }
                     retry_count = retry_count.saturating_add(1);
 
-                    sleep(Duration::from_millis(100));
+                    sleep(Duration::from_millis(100)).await;
                 }
             };
         }
@@ -60,7 +60,5 @@ pub async fn check_rpc() -> Result<(), anyhow::Error> {
         if slot_distance > MAX_CATCHUP_SLOT {
             request_switch();
         }
-
-        sleep(Duration::from_millis(100)).await;
     }
 }

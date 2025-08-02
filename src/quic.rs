@@ -1,43 +1,17 @@
 use {
     crate::{TOWER_REQUEST_CMD, TOWER_SIZE, config::make_server_config},
-    anyhow::Context,
-    quinn::{ClientConfig, RecvStream, SendStream},
+    quinn::{ClientConfig, Endpoint, RecvStream, SendStream},
     std::{
         env,
         fs::{self, File},
         io::{Read, Write},
         net::{IpAddr, Ipv4Addr, SocketAddr},
         str::FromStr,
+        sync::Arc,
     },
 };
 
-pub async fn init_sender() -> Result<(), anyhow::Error> {
-    let _ = match rustls::crypto::aws_lc_rs::default_provider().install_default() {
-        Ok(_) => Ok(()),
-        Err(e) => Err(anyhow::anyhow!(
-            "Error:  installing default provider: {:?}",
-            e
-        )),
-    };
-
-    let server_config = make_server_config()?;
-
-    let port: u16 = env::var("PORT")
-        .context("Error: unable to get port from environment variable")?
-        .parse()
-        .context("Error: unable to parse port")?;
-
-    let server = match quinn::Endpoint::server(
-        server_config,
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port),
-    ) {
-        Ok(server) => server,
-        Err(e) => {
-            eprintln!("Error: Unable to start server: {:?}", e);
-            return Err(anyhow::Error::msg("Error: Unable to start server"));
-        }
-    };
-
+pub async fn init_sender(server: Arc<Endpoint>) -> Result<(), anyhow::Error> {
     while let Some(incoming) = server.accept().await {
         match incoming.await {
             Ok(conn) => {
@@ -84,4 +58,26 @@ pub async fn handle_stream(
             }
         }
     }
+}
+
+pub async fn init_receiver(endpoint: Arc<Endpoint>) -> Result<(), anyhow::Error> {
+    let client_addr = env::var("QUIC_SERVER_URL").expect("Missing QUIC server URL");
+
+    let client_socket_addr =
+        SocketAddr::from_str(&client_addr.as_str()).expect("Error: unable to parse client addr");
+
+    match endpoint.connect(client_socket_addr, "server") {
+        Ok(client) => match client.await {
+            Ok(connection) => {
+                tracing::info!("Connected to server");
+            }
+            Err(e) => {
+                tracing::error!("Error: Unable to connect to server: {:?}", e);
+            }
+        },
+        Err(e) => {
+            tracing::error!("Error: Unable to connect to server: {:?}", e);
+        }
+    }
+    Ok(())
 }
