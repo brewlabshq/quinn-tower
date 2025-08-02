@@ -57,6 +57,7 @@ impl CloudflareKV {
             key,
         };
         let start = Instant::now();
+
         let value = self.client.request(&req).await?;
         let elapsed = start.elapsed();
         tracing::debug!("KV read key '{}' took: {:?}", key, elapsed);
@@ -111,6 +112,7 @@ mod tests {
         // write then read
         kv.write(key, &data).await?;
         let result = kv.read(key).await?;
+        tracing::debug!("{:?}", result.len());
         assert_eq!(result, data);
         Ok(())
     }

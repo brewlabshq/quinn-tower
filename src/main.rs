@@ -1,44 +1,20 @@
 use {
-    crate::{receiver::init_receiver, sender::init_sender},
+    // crate::{receiver::init_receiver, sender::init_sender},
+    crate::quic::init_sender,
     anyhow::Result,
     clap::{self, Parser, Subcommand},
-    std::path::PathBuf,
+    futures::future::join_all,
     tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt},
 };
 
+mod checker;
 mod cloudflare;
-mod receiver;
-mod sender;
-#[derive(Parser)]
-#[clap(
-    name = "quinn-tower",
-    version = "0.1",
-    author = "Dhruv <dhruvsol@brewlabs.so>"
-)]
-struct Args {
-    #[clap(subcommand)]
-    mode: Mode,
-}
+mod config;
+mod quic;
 
-#[derive(Clone, Subcommand)]
-enum Mode {
-    #[clap(value_parser)]
-    Sender {
-        #[clap(short)]
-        cert_path: PathBuf,
-        #[clap(short)]
-        key_path: PathBuf,
-        #[clap(short)]
-        client_ip: String,
-        #[clap(short)]
-        port: u16,
-    },
-    Receiver {
-        #[clap(short)]
-        port: u16,
-    },
-}
-
+pub const TOWER_SIZE: usize = 2319;
+pub const TOWER_REQUEST_CMD: &str = "tower-request";
+pub const MAX_CATCHUP_SLOT: u64 = 30;
 #[tokio::main]
 async fn main() -> Result<()> {
     let stdout_layer = fmt::layer()
@@ -52,10 +28,10 @@ async fn main() -> Result<()> {
         .with(stdout_layer)
         .init();
 
-    let args = Args::parse();
-    // match args.mode {
-    //     Mode::Sender => init_sender(args.address.as_str(), 5000).await?,
-    //     Mode::Receiver => init_receiver(args.address.as_str()).await?,
-    // }
+    let j = tokio::spawn(async move { init_sender().await });
+
+    let join_handles = vec![j];
+
+    join_all(join_handles).await;
     Ok(())
 }
