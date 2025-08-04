@@ -1,10 +1,5 @@
 use {
-    crate::MAX_CATCHUP_SLOT,
-    once_cell::sync::Lazy,
-    solana_commitment_config::CommitmentConfig,
-    solana_rpc_client::nonblocking::rpc_client::RpcClient,
-    std::{env, time::Duration},
-    tokio::{sync::watch, time::sleep},
+    crate::MAX_CATCHUP_SLOT, anyhow::Ok, once_cell::sync::Lazy, solana_commitment_config::CommitmentConfig, solana_pubkey::Pubkey, solana_rpc_client::nonblocking::rpc_client::RpcClient, solana_signer::Signer, std::{env, time::Duration}, tokio::{sync::watch, time::sleep}
 };
 
 pub static SWITCH_CHANNEL: Lazy<watch::Sender<bool>> = Lazy::new(|| {
@@ -29,7 +24,7 @@ pub async fn check_rpc() -> Result<(), anyhow::Error> {
         std::env::var("NODE_URL").unwrap_or_else(|_| "http://localhost:8899".to_string());
     let rpc_url = std::env::var("RPC_URL").unwrap_or_else(|_| "http://localhost:8899".to_string());
 
-    let node_client = RpcClient::new(node_url);
+    let node_client = RpcClient::new(node_url); // This node need to be other node ( not the one server is running on )
     let rpc_client = RpcClient::new(rpc_url);
 
     let mut retry_count: u64 = 0;
@@ -63,5 +58,24 @@ pub async fn check_rpc() -> Result<(), anyhow::Error> {
         if slot_distance > MAX_CATCHUP_SLOT {
             request_switch();
         }
+    }
+}
+
+
+pub fn check_keys()-> Result<bool,anyhow::Error>{
+    let ref_key_path = env::var("NODE_REFERNCE_KEY_PATH")?;
+    let primary_key_path = env::var("NODE_PRIMARY_KEY_PATH")?;
+    
+    let ref_keypair = solana_keypair::read_keypair_file(ref_key_path).expect("Error: unable to read ref keypair");
+    let primary_keypair = solana_keypair::read_keypair_file(primary_key_path).expect("Error: unable to read primary keypair");
+
+
+
+
+
+    if ref_keypair.pubkey() == primary_keypair.pubkey() {
+        Ok(true)
+    }else {
+        Ok(false)
     }
 }
