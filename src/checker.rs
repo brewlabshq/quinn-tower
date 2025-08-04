@@ -16,6 +16,9 @@ pub static SWITCH_CHANNEL: Lazy<watch::Sender<bool>> = Lazy::new(|| {
 pub fn request_switch() {
     let _ = SWITCH_CHANNEL.send(true);
 }
+pub fn switch_complete(){
+    let _ = SWITCH_CHANNEL.send(false);
+}
 
 pub fn should_switch() -> bool {
     *SWITCH_CHANNEL.borrow()

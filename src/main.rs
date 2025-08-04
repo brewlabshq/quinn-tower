@@ -16,6 +16,7 @@ mod quic;
 
 pub const TOWER_SIZE: usize = 2319;
 pub const TOWER_REQUEST_CMD: &str = "tower-request";
+pub const TOWER_RECEIVE_CONFIRM_CMD:&str = "tower-request-complete";
 pub const MAX_CATCHUP_SLOT: u64 = 30;
 
 #[tokio::main]

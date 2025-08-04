@@ -1,5 +1,5 @@
 use {
-    crate::{TOWER_REQUEST_CMD, TOWER_SIZE, config::make_server_config},
+    crate::{checker::{switch_complete, SWITCH_CHANNEL}, config::make_server_config, TOWER_REQUEST_CMD, TOWER_SIZE},
     quinn::{ClientConfig, Endpoint, RecvStream, SendStream},
     std::{
         env,
@@ -17,7 +17,7 @@ pub async fn init_sender(server: Arc<Endpoint>) -> Result<(), anyhow::Error> {
             Ok(conn) => {
                 let _stream = match conn.open_bi().await {
                     Ok((mut send_stream, mut recv_stream)) => {
-                        match handle_stream((&mut send_stream, &mut recv_stream)).await {
+                        match handle_stream_server((&mut send_stream, &mut recv_stream)).await {
                             Ok(_) => Ok(()),
                             Err(e) => Err(anyhow::Error::msg(format!(
                                 "Error: Unable to handle stream: {:?}",
@@ -40,23 +40,39 @@ pub async fn init_sender(server: Arc<Endpoint>) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-pub async fn handle_stream(
+pub async fn handle_stream_server(
     (send_stream, recv_stream): (&mut SendStream, &mut RecvStream),
 ) -> Result<(), anyhow::Error> {
-    let mut tower_req_cmd = TOWER_REQUEST_CMD.as_bytes().to_vec();
-    loop {
-        let rec = recv_stream.read_exact(&mut tower_req_cmd).await;
-        match rec {
-            Ok(_) => {
-                let tower_file = fs::read(env::var("TOWER_FILE_PATH").expect("Missing Tower path"))
-                    .expect("Error: unable to open the file");
+  
 
-                send_stream.write(&tower_file).await?;
+    loop {
+        let mut buf = [0u8;32];
+        let n = match recv_stream.read(&mut buf).await {
+            Ok(Some(n)) => n,
+            Ok(None) => {
+                println!("Stream closed.");
+                return Ok(());
             }
             Err(e) => {
-                eprintln!("Error: Unable to read data: {:?}", e);
+                eprintln!("Error reading stream: {:?}", e);
+                return Err(e.into());
             }
+        };
+        let cmd = String::from_utf8_lossy(&buf[..n]).trim().to_string();
+
+        match cmd.as_str() {
+            TOWER_REQUEST_CMD => {
+                // start switch
+                // send tower
+                
+            },
+            TOWER_RECEIVE_CONFIRM_CMD => {
+                switch_complete();
+                // hotload identity keys
+            }
+            _=>{}
         }
+
     }
 }
 
@@ -69,7 +85,17 @@ pub async fn init_receiver(endpoint: Arc<Endpoint>) -> Result<(), anyhow::Error>
     match endpoint.connect(client_socket_addr, "server") {
         Ok(client) => match client.await {
             Ok(connection) => {
+
                 tracing::info!("Connected to server");
+               match connection.accept_bi().await {
+                Ok(r) => {
+
+                },
+                Err(e) => {
+                    tracing::error!("Error: unable to accept bi channel: {:?}",e)
+                },
+                           }
+
             }
             Err(e) => {
                 tracing::error!("Error: Unable to connect to server: {:?}", e);

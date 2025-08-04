@@ -5,3 +5,6 @@ key.pem
 .env
 
 temp-tower.bin
+
+ice.json
+id.json
