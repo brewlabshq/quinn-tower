@@ -1,5 +1,5 @@
 use {
-    crate::MAX_CATCHUP_SLOT, anyhow::Ok, once_cell::sync::Lazy, solana_commitment_config::CommitmentConfig, solana_pubkey::Pubkey, solana_rpc_client::nonblocking::rpc_client::RpcClient, solana_signer::Signer, std::{env, time::Duration}, tokio::{sync::watch, time::sleep}
+    crate::MAX_CATCHUP_SLOT, once_cell::sync::Lazy, solana_commitment_config::CommitmentConfig,solana_rpc_client::nonblocking::rpc_client::RpcClient, solana_signer::Signer, std::{env, time::Duration}, tokio::{sync::watch, time::sleep}
 };
 
 pub static SWITCH_CHANNEL: Lazy<watch::Sender<bool>> = Lazy::new(|| {
