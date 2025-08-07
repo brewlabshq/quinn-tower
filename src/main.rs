@@ -1,7 +1,7 @@
 use {
     crate::{
         config::make_endpoint,
-        quic::{init_receiver, init_sender},
+        quic::{run_client, run_server},
     },
     anyhow::Result,
     futures::future::join_all,
@@ -16,7 +16,7 @@ mod quic;
 
 pub const TOWER_SIZE: usize = 2319;
 pub const TOWER_REQUEST_CMD: &str = "tower-request";
-pub const TOWER_RECEIVE_CONFIRM_CMD:&str = "tower-request-complete";
+pub const TOWER_RECEIVE_CONFIRM_CMD: &str = "tower-request-complete";
 pub const MAX_CATCHUP_SLOT: u64 = 30;
 
 #[tokio::main]
@@ -37,8 +37,8 @@ async fn main() -> Result<()> {
     let endpoint_sender_clone = endpoint.clone();
     let endpoint_receiver_clone = endpoint.clone();
 
-    let jh_sender = tokio::spawn(async move { init_sender(endpoint_sender_clone).await });
-    let jh_receiver = tokio::spawn(async move { init_receiver(endpoint_receiver_clone).await });
+    let jh_sender = tokio::spawn(async move { run_server(endpoint_sender_clone).await });
+    let jh_receiver = tokio::spawn(async move { run_client(endpoint_receiver_clone).await });
 
     join_all(vec![jh_sender, jh_receiver]).await;
     Ok(())
