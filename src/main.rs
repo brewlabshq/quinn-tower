@@ -1,26 +1,10 @@
-use {
-    crate::{
-        config::make_endpoint,
-        quic::{run_client, run_server},
-    },
-    anyhow::Result,
-    futures::future::join_all,
-    std::sync::Arc,
-    tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt},
-};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 mod checker;
 mod cloudflare;
-mod config;
-mod quic;
-
-pub const TOWER_SIZE: usize = 2319;
-pub const TOWER_REQUEST_CMD: &str = "tower-request";
-pub const TOWER_RECEIVE_CONFIRM_CMD: &str = "tower-request-complete";
-pub const MAX_CATCHUP_SLOT: u64 = 30;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), anyhow::Error> {
     dotenv::dotenv().ok();
     let stdout_layer = fmt::layer()
         .with_timer(fmt::time::UtcTime::rfc_3339()) // 2025-06-07T03:37:59Z
@@ -33,13 +17,5 @@ async fn main() -> Result<()> {
         .with(stdout_layer)
         .init();
 
-    let endpoint = Arc::new(make_endpoint().expect("Error: unable to init endpoint"));
-    let endpoint_sender_clone = endpoint.clone();
-    let endpoint_receiver_clone = endpoint.clone();
-
-    let jh_sender = tokio::spawn(async move { run_server(endpoint_sender_clone).await });
-    let jh_receiver = tokio::spawn(async move { run_client(endpoint_receiver_clone).await });
-
-    join_all(vec![jh_sender, jh_receiver]).await;
     Ok(())
 }

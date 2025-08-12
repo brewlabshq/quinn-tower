@@ -1,5 +1,10 @@
 use {
-    crate::MAX_CATCHUP_SLOT, once_cell::sync::Lazy, solana_commitment_config::CommitmentConfig,solana_rpc_client::nonblocking::rpc_client::RpcClient, solana_signer::Signer, std::{env, time::Duration}, tokio::{sync::watch, time::sleep}
+    once_cell::sync::Lazy,
+    solana_commitment_config::CommitmentConfig,
+    solana_rpc_client::nonblocking::rpc_client::RpcClient,
+    solana_signer::Signer,
+    std::{env, time::Duration},
+    tokio::{sync::watch, time::sleep},
 };
 
 pub static SWITCH_CHANNEL: Lazy<watch::Sender<bool>> = Lazy::new(|| {
@@ -11,7 +16,7 @@ pub static SWITCH_CHANNEL: Lazy<watch::Sender<bool>> = Lazy::new(|| {
 pub fn request_switch() {
     let _ = SWITCH_CHANNEL.send(true);
 }
-pub fn switch_complete(){
+pub fn switch_complete() {
     let _ = SWITCH_CHANNEL.send(false);
 }
 
@@ -55,27 +60,28 @@ pub async fn check_rpc() -> Result<(), anyhow::Error> {
         let node_slot = get_slot_while_retrying(&node_client).await?;
         let rpc_slot = get_slot_while_retrying(&rpc_client).await?;
         let slot_distance = rpc_slot.saturating_sub(node_slot);
-        if slot_distance > MAX_CATCHUP_SLOT {
+        let max_catchup_slot = env::var("MAX_CATCHUP_SLOT")
+            .expect("Error: unable to read max catchup slot")
+            .parse::<u64>()
+            .expect("Error: unable to parse max catchup slot");
+        if slot_distance > max_catchup_slot {
             request_switch();
         }
     }
 }
 
-
-pub fn check_keys()-> Result<bool,anyhow::Error>{
+pub fn check_keys() -> Result<bool, anyhow::Error> {
     let ref_key_path = env::var("NODE_REFERNCE_KEY_PATH")?;
     let primary_key_path = env::var("NODE_PRIMARY_KEY_PATH")?;
-    
-    let ref_keypair = solana_keypair::read_keypair_file(ref_key_path).expect("Error: unable to read ref keypair");
-    let primary_keypair = solana_keypair::read_keypair_file(primary_key_path).expect("Error: unable to read primary keypair");
 
-
-
-
+    let ref_keypair =
+        solana_keypair::read_keypair_file(ref_key_path).expect("Error: unable to read ref keypair");
+    let primary_keypair = solana_keypair::read_keypair_file(primary_key_path)
+        .expect("Error: unable to read primary keypair");
 
     if ref_keypair.pubkey() == primary_keypair.pubkey() {
         Ok(true)
-    }else {
+    } else {
         Ok(false)
     }
 }
