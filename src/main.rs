@@ -2,6 +2,7 @@ use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberI
 
 mod checker;
 mod cloudflare;
+mod r2;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
