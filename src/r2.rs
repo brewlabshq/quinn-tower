@@ -71,7 +71,7 @@ mod tests {
     };
 
     #[tokio::test]
-    async fn test_kv_roundtrip() -> Result<(), anyhow::Error> {
+    async fn test_r2_roundtrip() -> Result<(), anyhow::Error> {
         // Load .env once
         dotenv().ok();
 
